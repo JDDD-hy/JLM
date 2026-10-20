@@ -1,0 +1,69 @@
+.venv/
+.tmp/
+.agents/
+.aws/
+.claude/
+.codex/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Public repository excludes all Markdown documents
+*.md
+
+# Web sharing interface stays local
+src/web/
+start_web.bat
+tests/test_web_*.py
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Model caches and weights
+.cache/
+models/
+*.safetensors
+*.bin
+*.gguf
+huggingface/
+
+# Training artifacts
+checkpoints/*
+adapters/*
+outputs/*
+logs/*
+!checkpoints/.gitkeep
+!adapters/.gitkeep
+!outputs/.gitkeep
+!logs/.gitkeep
+
+# Public model: inference needs only the LoRA weights and config
+!adapters/jlm-v0.1-pilot-dialogue-chat4b-v4/
+adapters/jlm-v0.1-pilot-dialogue-chat4b-v4/*
+!adapters/jlm-v0.1-pilot-dialogue-chat4b-v4/adapter_model.safetensors
+!adapters/jlm-v0.1-pilot-dialogue-chat4b-v4/adapter_config.json
+
+# Data: raw/unreviewed/private content is never committed
+data/**
+!data/**/
+!data/**/.gitkeep
+raw_data/
+private_data/
+
+# Collection state and temporary exports
+collection_checkpoints/
+*.tmp
+*.part
+
+
+# PyInstaller output
+dist/
+build/
+tools/

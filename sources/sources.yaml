@@ -1,0 +1,20 @@
+sources:
+  - id: authorized_manual_import
+    platform: local
+    collection_method: manual_import
+    source_type: authorized_dataset
+    access_status: requires_provider_confirmation
+    training_license_status: requires_record_level_review
+  - id: xiaohongshu_public_candidate
+    platform: xiaohongshu
+    collection_method: existing_read_only_cli
+    source_type: public_note_or_comment
+    access_status: public_access_only
+    automated_collection_permission_status: user_declared_school_permission_scope_confirmed
+    automated_collection_permission_evidence: data/reviewed/permissions/school-declaration-20261019.json
+    training_license_status: pending_review
+    restrictions:
+      - no_private_content
+      - no_usernames_avatars_or_account_ids_in_training_text
+      - no_training_export_without_human_and_license_review
+

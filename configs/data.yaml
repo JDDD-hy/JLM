@@ -1,0 +1,20 @@
+input_path: data/reviewed/train_text.jsonl
+metadata_path: data/reviewed/metadata.jsonl
+processed_dir: data/processed
+splits_dir: data/splits
+seed: 42
+split_ratios:
+  train: 0.8
+  validation: 0.1
+  test: 0.1
+quality:
+  allowed_statuses:
+    - genuine_jiahao_style
+  require_license_approved: true
+length:
+  min_tokens: 3
+  max_tokens: 128
+deduplication:
+  near_threshold: 92.0
+  auto_drop_near_duplicates: false
+

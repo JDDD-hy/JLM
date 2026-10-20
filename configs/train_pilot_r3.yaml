@@ -1,0 +1,21 @@
+output_dir: checkpoints/jlm-pilot-r3-balanced-lr2e4-r16
+adapter_dir: adapters/jlm-v0.1-pilot-r3-balanced-lr2e4-r16
+learning_rate: 0.0002
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+num_train_epochs: 5
+max_seq_length: 128
+warmup_ratio: 0.03
+weight_decay: 0.01
+lr_scheduler_type: cosine
+gradient_checkpointing: true
+packing: false
+seed: 42
+logging_steps: 1
+eval_steps: 10
+save_steps: 10
+save_total_limit: 3
+early_stopping_patience: 3
+resume_from_checkpoint: null
+

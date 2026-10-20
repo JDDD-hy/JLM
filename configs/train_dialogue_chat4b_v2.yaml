@@ -1,0 +1,21 @@
+output_dir: checkpoints/jlm-pilot-dialogue-chat4b-v2
+adapter_dir: adapters/jlm-v0.1-pilot-dialogue-chat4b-v2
+learning_rate: 0.0001
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+num_train_epochs: 5
+max_seq_length: 128
+warmup_ratio: 0.03
+weight_decay: 0.01
+lr_scheduler_type: cosine
+gradient_checkpointing: true
+packing: false
+seed: 42
+logging_steps: 1
+eval_steps: 20
+save_steps: 20
+save_total_limit: 3
+early_stopping_patience: 3
+resume_from_checkpoint: null
+

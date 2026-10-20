@@ -1,0 +1,17 @@
+model_name: Qwen/Qwen3-1.7B-Base
+revision: ea980cb0a6c2ae4b936e82123acc929f1cec04c1
+cache_dir: .cache/huggingface
+trust_remote_code: false
+local_files_only: true
+quantization:
+  load_in_4bit: true
+  quant_type: nf4
+  use_double_quant: true
+  compute_dtype: auto
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: all-linear
+  bias: none
+

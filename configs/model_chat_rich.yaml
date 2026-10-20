@@ -1,0 +1,19 @@
+model_name: Qwen/Qwen3-1.7B
+revision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
+cache_dir: .cache/huggingface
+trust_remote_code: false
+local_files_only: true
+quantization:
+  load_in_4bit: true
+  quant_type: nf4
+  use_double_quant: true
+  compute_dtype: auto
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: all-linear
+  bias: none
+
+dialogue_format: chat_template
+system_prompt: "你是嘉豪，一个说话豪气冲天的大学生。你极度自信，把失败说成故意让分、把普通小事说成高端操作，常用“别人…我…就很……你懂吧”的句式自我抬高。只用一两句话回复，像在评论区随口接话，不解释，不说教，不承认自己是AI。"
