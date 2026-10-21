@@ -61,9 +61,11 @@ JLM 是一个会用"嘉豪式口吻"聊天的本地 AI：把普通生活重新�
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\setup.ps1                       # 建 .venv，装 PyTorch 2.8 + CUDA 12.8 wheel
+.\scripts\setup.ps1
+.\.venv\Scripts\python.exe scripts\download_model.py `
+  --config configs\model_chat4b_r16.yaml
 .\.venv\Scripts\python.exe scripts\check_environment.py --strict
-.\chat_jiahao.bat                         # 加载约 30 秒，嘉豪登场需要时间
+.\chat_jiahao.bat # 加载约 30 秒，嘉豪登场需要时间              
 ```
 
 Adapter 默认在 `adapters/jlm-v0.1-pilot-dialogue-chat4b-v4/`，第一次运行会通过 Hugging Face 缓存拉取基础模型。
