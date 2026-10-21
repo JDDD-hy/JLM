@@ -91,9 +91,14 @@ Adapter 默认在 `adapters/jlm-v0.1-pilot-dialogue-chat4b-v4/`，第一次运�
 .\.venv\Scripts\python.exe scripts\chat.py --no-judge   # 关闭裁判，看嘉豪的原始野性
 ```
 
+
+
+
 ### 方式二：CPU 离线版（没有显卡也配拥有嘉豪）
 
-基于 **llama.cpp + GGUF**，打包后在 `dist/JLM-CPU/`：
+CPU 离线包基于 **llama.cpp + GGUF**，解压后的目录结构对应 `dist/JLM-CPU/`：[通过 Google Drive 下载 JLM CPU 离线包](https://drive.google.com/drive/folders/1Zy0PKDYAU8mZ7MmtO6jg9Nx6sdbi_ehv?usp=drive_link)
+
+下载后解压，双击 `和嘉豪聊天.bat`。
 
 - Windows 10/11 64 位，内存 8 GB 起（推荐 16 GB），硬盘剩余 4 GB，**不需要显卡**。
 - 解压后双击 `和嘉豪聊天.bat`，看到「嘉豪已就位」即可。
@@ -113,29 +118,38 @@ Adapter 默认在 `adapters/jlm-v0.1-pilot-dialogue-chat4b-v4/`，第一次运�
 <summary>展开：数据 → 训练 → 评估（嘉豪的成长不是一夜之间）</summary>
 
 ```powershell
-# 下载并校验基础模型
-.\.venv\Scripts\python.exe scripts\download_model.py
+
+# 下载并校验当前 4B 对话基础模型
+.\.venv\Scripts\python.exe scripts\download_model.py `
+  --config configs\model_chat4b_r16.yaml
 
 # 导入原始数据
 .\.venv\Scripts\python.exe scripts\import_data.py <你的数据.jsonl> `
   --source-platform xiaohongshu --source-type public_comment --license-status pending_review
 .\.venv\Scripts\python.exe scripts\prepare_data.py
 
-# 构建对话数据
-.\.venv\Scripts\python.exe scripts\build_dialogue_v4.py
+# 准备对话数据
+# 需要自行准备 train.jsonl、validation.jsonl 和 metadata_index.jsonl,
+# 不能在刚克隆的公开仓库中直接从零执行。
 
-# QLoRA 训练（冒烟测试 / 正式训练）
+# QLoRA 工程冒烟测试
 .\.venv\Scripts\python.exe scripts\smoke_train.py
+
+# 使用自己准备并审核的数据训练
 .\.venv\Scripts\python.exe -m src.training.train `
   --model-config configs\model_chat4b_r16.yaml `
   --train-config configs\train_dialogue_chat4b_v4.yaml `
-  --train-file data\splits-dialogue-v4-20261020\train.jsonl `
-  --validation-file data\splits-dialogue-v4-20261020\validation.jsonl `
-  --unreviewed-pilot   
+  --train-file <你的对话数据目录>\train.jsonl `
+  --validation-file <你的对话数据目录>\validation.jsonl
+
+# 训练数据目录还需要包含 `metadata_index.jsonl`。正式训练要求数据具有人工审核结果、训练许可依据，并确保训练集与验证集不存在来源或近重复泄漏。
 
 # 评估
-.\.venv\Scripts\python.exe scripts\eval_dialogue.py
-.\.venv\Scripts\python.exe -m src.evaluation.evaluate --adapter <adapter 目录>
+.\.venv\Scripts\python.exe scripts\eval_dialogue.py `
+  --test-file <你的对话数据目录>\test.jsonl `
+  --a "<你的 Adapter 目录>|configs\model_chat4b_r16.yaml" `
+  --b "|configs\model_chat4b_r16.yaml" `
+  --output-dir outputs\dialogue-eval
 ```
 
 各脚本的具体参数以 `--help` 为准。
@@ -174,7 +188,7 @@ tests/          pytest 测试
 真正的强者，敢于承认自己的边界。
 
 1. **自动打分 ≠ 真人认可**："豪气值"是模型分数的人工映射，不是校准过的百分比；裁判也会看走眼。还没有完整消融和独立盲评。
-2. **能跑 ≠ 到处能跑**：其他电脑的兼容性、公网安全和长期服务都需要分别验证。
+2. **候选池 ≠ 正式训练集**：1,000+ 条表示清洗去重后的候选规模，不代表这些内容都经过人工审核或进入训练。当前公开 Adapter 属于明确标记的未人审 pilot，训练数据同时包含采集回复配对和 AI 合成对话。
 3. **仅供学习、教学与技术探讨**：本项目是一次模型工程实验，用于学习数据处理、QLoRA 微调与推理部署，不得用于商业用途，也不得用于冒充、骚扰、引战或其他违法违规用途。
 4. **生成内容不代表作者立场**：回复由 AI 生成，可能夸张、冒犯或与事实不符，仅作风格研究，请勿当真。
 5. **数据与权利**：仓库不包含任何训练语料。如认为本项目涉及你的权益，请提 Issue 联系，作者会及时处理。
