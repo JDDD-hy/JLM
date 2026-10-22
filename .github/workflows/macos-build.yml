@@ -1,0 +1,93 @@
+name: Build macOS arm64
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/macos-build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          brew install sevenzip
+          python -m pip install --disable-pip-version-check pyinstaller==6.16.0 pytest==8.4.2 rich==14.3.4
+
+      - name: Test macOS packaging code
+        run: python -m pytest tests/test_macos_package.py tests/test_process_lifetime.py
+
+      - name: Restore verified GGUF models from v0.3.0
+        shell: bash
+        run: |
+          mkdir -p .tmp/release build/gguf
+          cd .tmp/release
+          curl --fail --location --retry 3 --output JLM-CPU.7z.001 \
+            https://github.com/JDDD-hy/JLM/releases/download/v0.3.0/JLM-CPU.7z.001
+          curl --fail --location --retry 3 --output JLM-CPU.7z.002 \
+            https://github.com/JDDD-hy/JLM/releases/download/v0.3.0/JLM-CPU.7z.002
+          printf '%s  %s\n' \
+            6F3C2F6418962E76E85B12FE4ADF8F0040623F13FAEE41562E583686FCC964DC JLM-CPU.7z.001 \
+            028CF8B5FBA59A2B826CD10962DFD2A3791D25BF66A8B0CA64009987544D1199 JLM-CPU.7z.002 \
+            | shasum -a 256 --check
+          7zz e JLM-CPU.7z.001 -o../../build/gguf -r \
+            '-i!qwen3-4b-q4_k_m.gguf' '-i!jiahao-lora-f16.gguf' -y
+          cd ../..
+          test "$(stat -f %z build/gguf/qwen3-4b-q4_k_m.gguf)" = 2497280960
+          test "$(stat -f %z build/gguf/jiahao-lora-f16.gguf)" = 66095328
+          rm -rf .tmp/release
+
+      - name: Build llama.cpp with Metal
+        shell: bash
+        run: |
+          git init .tmp/llama.cpp
+          git -C .tmp/llama.cpp remote add origin https://github.com/ggml-org/llama.cpp.git
+          git -C .tmp/llama.cpp fetch --depth 1 origin 3bb63cbcb
+          git -C .tmp/llama.cpp checkout --detach FETCH_HEAD
+          cmake -S .tmp/llama.cpp -B .tmp/llama-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGGML_METAL=ON \
+            -DLLAMA_CURL=OFF \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF \
+            -DLLAMA_BUILD_SERVER=ON
+          cmake --build .tmp/llama-build --config Release --target llama-server --parallel 3
+
+      - name: Assemble and verify JLM Mac package
+        shell: bash
+        run: |
+          python packaging/build_macos.py \
+            --llama-bin .tmp/llama-build/bin \
+            --gguf-dir build/gguf \
+            --out dist/JLM-Mac
+          file dist/JLM-Mac/JLM dist/JLM-Mac/llama/llama-server | grep --quiet arm64
+          dist/JLM-Mac/JLM --help >/dev/null
+          dist/JLM-Mac/llama/llama-server --version
+          du -sh dist/JLM-Mac
+
+      - name: Upload one-day test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: JLM-macOS-arm64
+          path: dist/JLM-Mac
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0

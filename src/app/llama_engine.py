@@ -12,12 +12,14 @@ import os
 import random
 import socket
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from src.app.process_lifetime import KillOnCloseJob, stop_process
 from src.inference.selection import RELEVANCE_TEMPLATE, STYLE_TEMPLATE, clean, qwen_chat_prompt, rank, score
 
 MISSING_LOGPROB = -30.0
@@ -47,9 +49,11 @@ class LlamaEngine:
     history_turns: int = 2
     threads: int = 0
     context: int = 2048
+    gpu_layers: int = 0
     history: list[tuple[str, str]] = field(default_factory=list)
     last: Reply | None = None
     process: subprocess.Popen | None = None
+    job: KillOnCloseJob | None = field(default=None, init=False, repr=False)
     port: int = 0
 
     # ---------- server ----------
@@ -81,27 +85,38 @@ class LlamaEngine:
             str(threads),
             "--log-disable",
         ]
-        self.process = subprocess.Popen(
-            command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            if self.process.poll() is not None:
-                raise RuntimeError("llama-server 启动失败，可能是内存不足或文件损坏。")
-            try:
-                if self._get("/health").get("status") == "ok":
-                    return
-            except (OSError, ValueError):
-                pass
-            time.sleep(1)
-        raise TimeoutError("模型加载超时。")
+        if self.gpu_layers:
+            command += ["--n-gpu-layers", str(self.gpu_layers)]
+        self.job = KillOnCloseJob()
+        try:
+            self.process = subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            self.job.assign(self.process)
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                if self.process.poll() is not None:
+                    raise RuntimeError("llama-server 启动失败，可能是内存不足或文件损坏。")
+                try:
+                    if self._get("/health").get("status") == "ok":
+                        return
+                except (OSError, ValueError):
+                    pass
+                time.sleep(1)
+            raise TimeoutError("模型加载超时。")
+        except BaseException:
+            self.close()
+            raise
 
     def close(self) -> None:
-        if self.process and self.process.poll() is None:
-            self.process.terminate()
+        stop_process(self.process)
+        self.process = None
+        if self.job:
+            self.job.close()
+            self.job = None
 
     def _get(self, path: str) -> dict:
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=5) as response:
@@ -187,6 +202,13 @@ class LlamaEngine:
         self.last = None
 
 
+def package_root() -> Path:
+    """External models and llama-server live beside the frozen macOS executable."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[3]
+
+
 def main() -> None:
     """Entry point of the CPU package: paths are relative to the package root (parent of app/)."""
     import argparse
@@ -195,16 +217,25 @@ def main() -> None:
     from src.app.tui import JiahaoApp
 
     prepare_console()
-    root = Path(__file__).resolve().parents[3]
+    root = package_root()
+    server_name = "llama-server.exe" if os.name == "nt" else "llama-server"
     parser = argparse.ArgumentParser(description="Jiahao Language Model (CPU)")
-    parser.add_argument("--server", default=str(root / "llama" / "llama-server.exe"))
+    parser.add_argument("--server", default=str(root / "llama" / server_name))
     parser.add_argument("--model", default=str(root / "models" / "qwen3-4b-q4_k_m.gguf"))
     parser.add_argument("--lora", default=str(root / "models" / "jiahao-lora-f16.gguf"))
     parser.add_argument("--candidates", type=int, default=3)
     parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--gpu-layers", type=int, default=99 if sys.platform == "darwin" else 0)
     args = parser.parse_args()
-    engine = LlamaEngine(args.server, args.model, args.lora, args.temperature, args.candidates)
-    output = Path(os.environ.get("USERPROFILE", root)) / "Documents" / "JLM聊天记录"
+    engine = LlamaEngine(
+        args.server,
+        args.model,
+        args.lora,
+        temperature=args.temperature,
+        candidate_count=args.candidates,
+        gpu_layers=args.gpu_layers,
+    )
+    output = Path.home() / "Documents" / "JLM聊天记录"
     try:
         JiahaoApp(engine, output_dir=str(output)).run()
     finally:
