@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -33,7 +33,20 @@ jobs:
           python -m pip install --disable-pip-version-check pyinstaller==6.16.0 pytest==8.4.2 rich==14.3.4
 
       - name: Test macOS packaging code
-        run: python -m pytest tests/test_macos_package.py tests/test_process_lifetime.py
+        shell: bash
+        run: |
+          set +e
+          output=$(python -m pytest tests/test_macos_package.py tests/test_process_lifetime.py 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if (( status != 0 )); then
+            output=${output//'%'/'%25'}
+            output=${output//$'\r'/'%0D'}
+            output=${output//$'\n'/'%0A'}
+            printf '::error title=macOS packaging tests failed::%s\n' "$output"
+            exit "$status"
+          fi
 
       - name: Restore verified GGUF models from v0.3.0
         shell: bash
