@@ -35,6 +35,7 @@ jobs:
       - name: Test macOS packaging code
         shell: bash
         run: |
+          mkdir -p .tmp
           set +e
           output=$(python -m pytest tests/test_macos_package.py tests/test_process_lifetime.py 2>&1)
           status=$?
