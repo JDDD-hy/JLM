@@ -74,7 +74,7 @@ jobs:
         run: |
           git init .tmp/llama.cpp
           git -C .tmp/llama.cpp remote add origin https://github.com/ggml-org/llama.cpp.git
-          git -C .tmp/llama.cpp fetch --depth 1 origin 3bb63cbcb
+          git -C .tmp/llama.cpp fetch --depth 1 origin 3bb63cbcbfb62056c84fe9e521b0f3d756d29c32
           git -C .tmp/llama.cpp checkout --detach FETCH_HEAD
           cmake -S .tmp/llama.cpp -B .tmp/llama-build \
             -DCMAKE_BUILD_TYPE=Release \
